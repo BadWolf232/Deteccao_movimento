@@ -2,42 +2,47 @@ from pathlib import Path
 import time 
 import cv2
 
-motion_frame = Path("assets/aula8_video_exemplo.avi")
 
-capture = cv2.VideoCapture(str(motion_frame))
+motion_frame = Path("assets")
 
-if not capture.isOpened():
-    print(f"Falaha ao abrir o arquivo de vídeo: {motion_frame}")
+path_frames = sorted((motion_frame / "input").glob("in*.jpg"))
+
+if not path_frames:
+    print("Nenhum frame foi encontrado")
     exit()
 
-fps = capture.get(cv2.CAP_PROP_FPS)
-period = 1/ fps if fps > 0 else 1/30 
+start, end = map(int, (motion_frame/"temporalROI.txt").read_text().split())
 
-previus_frame = None
+roi = cv2.imread(str(motion_frame / "ROI.bmp"), cv2.IMREAD_GRAYSCALE)
+_, roi_mask = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY)
 
-while True: 
-    start = time.perf_counter()
-    ret, frame = capture.read() 
+previous_frame = None  
 
-    if not ret:
-        print("Falha ao ler o frame do vídeo.")
-        continue  
+for path in path_frames: 
+
+    frame_num = int(path.stem[2:])
+    frame = cv2.imread(str(path))
+
+    if frame is None:
+        print(f"Falha ao le o frame: {path}")
+        break
+    
 
     gaussian_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gaussian_frame = cv2.GaussianBlur(gaussian_frame, (15, 15), 0)
 
-    if previus_frame is None:
-        previus_frame = gaussian_frame
+    if previous_frame is None:
+        previous_frame = gaussian_frame
         continue
 
-    ditinct_frame = cv2.absdiff(previus_frame, gaussian_frame)
-
+    ditinct_frame = cv2.absdiff(previous_frame, gaussian_frame)
     _, moviment_frame = cv2.threshold(ditinct_frame, 12, 255, cv2.THRESH_BINARY)
 
-    moviment_frames = cv2.dilate(moviment_frame, None, iterations=2) 
+    movement = cv2.bitwise_and(moviment_frame, roi_mask)
+    movement = cv2.dilate(movement, None, iterations=2)
 
     contours, _ = cv2.findContours(
-        moviment_frames, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        movement, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
 
     for contour in contours:
@@ -47,16 +52,21 @@ while True:
         x, y, largura, altura = cv2.boundingRect(contour)
         cv2.rectangle(frame, (x, y), (x + largura, y + altura), (0, 255, 0), 2)
 
+    in_eval = start <= frame_num <= end 
+    cv2.putText(
+        frame, f"frase {frame_num} {'{avalicao}' if in_eval else ''}",
+        (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2,
+    )
 
     cv2.imshow("Analise dos frames", frame) 
 
-    previus_frame = gaussian_frame
+    previous_frame = gaussian_frame
 
-    time_cicle = time.perf_counter() - start
-    time_wait_ms = max(1, int((period - time_cicle) * 1000))
+    #time_cicle = time.perf_counter() - start
+    #time_wait_ms = max(1, int((period - time_cicle) * 1000))
 
-    if cv2.waitKey(time_wait_ms) & 0xFF == ord("e"):
+    if cv2.waitKey(30) & 0xFF == ord("e"):
         break 
 
-capture.release()
+#capture.release()
 cv2.destroyAllWindows()
