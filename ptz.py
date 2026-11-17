@@ -86,7 +86,7 @@ def postprocess(mask, roi_mask):
 #  AVALIAÇÃO 
 
 def evaluate(mask, gt, roi_mask):
-    # 255 = movimento, 0 = fundo; 170 (desconhecido), 85 (sombra) e 50 (fora da ROI) são ignorados
+    # 255 = movimento, 0 = fundo; 170 (desconhecido), 50 (sombra) e 85 (fora da ROI) são ignorados
     pred = mask > 0
     moving = gt == 255
     background = (gt == 0) & (roi_mask > 0)

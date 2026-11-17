@@ -58,7 +58,7 @@ def save_label_distribution(out_dir, gt_dir, eval_start, eval_end):
         for value, amount in zip(*np.unique(gt, return_counts=True)):
             counts[int(value)] = counts.get(int(value), 0) + int(amount)
     total = sum(counts.values())
-    names = {0: "fundo", 255: "movimento", 170: "desconhecido", 85: "sombra", 50: "fora da ROI"}
+    names = {0: "fundo", 255: "movimento", 170: "desconhecido", 50: "sombra", 85: "fora da ROI"}
     write_csv(out_dir / "rotulos_referencia.csv", [
         {"valor": v, "significado": names.get(v, "outro"), "pixels": c, "percentual": round(100 * c / total, 3)}
         for v, c in sorted(counts.items())])
